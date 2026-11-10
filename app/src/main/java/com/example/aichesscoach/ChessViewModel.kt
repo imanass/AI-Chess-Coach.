@@ -580,7 +580,7 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
             _ui.update { it.copy(busy = true, apiStatus = "Testing connection…") }
             runCatching { api.test(config()) }
                 .onSuccess { msg -> _ui.update { it.copy(busy = false, apiStatus = msg) } }
-                .onFailure { _ui.update { it.copy(busy = false, apiStatus = it.message ?: "Connection failed.") } }
+                .onFailure { cause -> _ui.update { it.copy(busy = false, apiStatus = cause.message ?: "Connection failed.") } }
         }
     }
 
