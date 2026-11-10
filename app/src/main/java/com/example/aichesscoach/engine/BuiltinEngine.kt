@@ -160,8 +160,8 @@ object BuiltinEngine {
 
         var alpha = alphaIn
         var best = -2 * MATE
-        orderMoves(board, moves)
-        for (move in moves) {
+        val ordered = orderMoves(board, moves)
+        for (move in ordered) {
             board.doMove(move)
             val child = negamax(board, depth - 1, ply + 1, -beta, -alpha, deadline)
             board.undoMove()
@@ -184,9 +184,9 @@ object BuiltinEngine {
         if (alpha >= beta) return stand
 
         val captures = board.legalMoves().filter { isTactical(board, it) }
-        orderMoves(board, captures)
+        val orderedCaptures = orderMoves(board, captures)
         var best = stand
-        for (move in captures) {
+        for (move in orderedCaptures) {
             board.doMove(move)
             val child = quiesce(board, -beta, -alpha, deadline, qsDepth + 1)
             board.undoMove()
@@ -199,15 +199,14 @@ object BuiltinEngine {
         return best
     }
 
-    private fun orderMoves(board: Board, moves: MutableList<Move>) {
-        moves.sortByDescending { move ->
+    private fun orderMoves(board: Board, moves: List<Move>): List<Move> =
+        moves.sortedByDescending { move ->
             val victim = board.getPiece(move.to)
             val victimValue = if (victim == Piece.NONE) 0 else PIECE_VALUE[pieceType(victim)] ?: 0
             val attackerValue = PIECE_VALUE[pieceType(board.getPiece(move.from))] ?: 0
             val promoBonus = if (move.promotion != Piece.NONE) 800 else 0
             victimValue * 10 - attackerValue + promoBonus
         }
-    }
 
     private fun isTactical(board: Board, move: Move): Boolean {
         if (move.promotion != Piece.NONE) return true
