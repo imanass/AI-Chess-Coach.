@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Pawn: solid head -->
+    <path
+        android:fillColor="#F6F2E8"
+        android:pathData="M54,30 a10,10 0 1,1 -0.01,0 Z" />
+    <!-- Pawn: neck -->
+    <path
+        android:fillColor="#F6F2E8"
+        android:pathData="M50,38 L58,38 L58,46 L50,46 Z" />
+    <!-- Pawn: flared body -->
+    <path
+        android:fillColor="#F6F2E8"
+        android:pathData="M49,44 L59,44 L64,66 L44,66 Z" />
+    <!-- Pawn: base -->
+    <path
+        android:fillColor="#F6F2E8"
+        android:pathData="M40,68 L68,68 L68,74 L40,74 Z" />
+</vector>
