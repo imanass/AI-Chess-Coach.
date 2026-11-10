@@ -26,7 +26,7 @@ class PuzzleValidationTest {
             File("../app/src/main/assets/$name")
         )
         val file = candidates.firstOrNull { it.exists() }
-            ?: fail("Could not locate $name; looked in ${candidates.map { it.absolutePath }}")
+            ?: error("Could not locate $name; looked in ${candidates.map { it.absolutePath }}")
         return file.readText()
     }
 
