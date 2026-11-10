@@ -29,6 +29,9 @@ enum class Difficulty(val label: String, val budgetMs: Long, val maxDepth: Int, 
 object BuiltinEngine {
 
     private const val MATE = 100_000
+
+    /** Publicly readable mate ceiling used by review and puzzle logic. */
+    const val MATE_OPEN = MATE
     private const val TIMEOUT = Int.MIN_VALUE / 4
 
     private val PIECE_VALUE = mapOf(
@@ -251,6 +254,71 @@ object BuiltinEngine {
             }
         }
         return total
+    }
+
+    /**
+     * Full-strength analysis of a position: returns the best move and the search
+     * score in centipawns from the side to move's perspective. Deterministic and
+     * read-only - used by game review and puzzle verification.
+     */
+    fun analyzePosition(position: Board, budgetMs: Long = 300, maxDepth: Int = 4): Pair<Move?, Int> {
+        val board = Board()
+        board.loadFromFen(position.fen)
+        val rootMoves = board.legalMoves()
+        if (rootMoves.isEmpty()) return null to (if (board.isKingAttacked()) -MATE else 0)
+        val deadline = System.nanoTime() + budgetMs * 1_000_000
+        var bestMove = rootMoves[0]
+        var bestScore = -2 * MATE
+        for (depth in 1..maxDepth) {
+            var depthBest = -2 * MATE
+            var depthMove: Move = rootMoves[0]
+            var aborted = false
+            for (move in rootMoves) {
+                board.doMove(move)
+                val child = negamax(board, depth - 1, 1, -MATE, MATE, deadline)
+                board.undoMove()
+                if (child == TIMEOUT) { aborted = true; break }
+                val score = -child
+                if (score > depthBest) { depthBest = score; depthMove = move }
+            }
+            if (!aborted) { bestScore = depthBest; bestMove = depthMove }
+            if (aborted || bestScore >= MATE - 64 || bestScore <= -(MATE - 64)) break
+        }
+        return bestMove to bestScore
+    }
+
+    /** True when the side to move has a move that immediately checkmates the opponent. */
+    fun hasMatingMove(position: Board): Boolean {
+        val board = Board()
+        board.loadFromFen(position.fen)
+        for (move in board.legalMoves()) {
+            board.doMove(move)
+            val mated = board.isMated()
+            board.undoMove()
+            if (mated) return true
+        }
+        return false
+    }
+
+    /** True when the side to move is losing by force: the opponent's best play mates. */
+    fun isGettingMated(position: Board, budgetMs: Long = 900, maxDepth: Int = 6): Boolean {
+        val (_, score) = analyzePosition(position, budgetMs, maxDepth)
+        return score <= -(MATE - 64)
+    }
+
+    /** True when the side to move has a forced mate within the search horizon. */
+    fun hasForcedMate(position: Board, budgetMs: Long = 1500, maxDepth: Int = 6): Boolean {
+        val board = Board()
+        board.loadFromFen(position.fen)
+        val deadline = System.nanoTime() + budgetMs * 1_000_000
+        for (move in board.legalMoves()) {
+            board.doMove(move)
+            val child = negamax(board, maxDepth - 1, 1, -MATE, MATE, deadline)
+            board.undoMove()
+            if (child == TIMEOUT) return false
+            if (-child >= MATE - 64) return true
+        }
+        return false
     }
 
     /** Formats a White-perspective centipawn score like "+1.2" / "-0.4" / "0.0". */

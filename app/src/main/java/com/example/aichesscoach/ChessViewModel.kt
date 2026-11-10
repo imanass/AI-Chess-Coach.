@@ -12,6 +12,7 @@ import com.example.aichesscoach.data.ChessDatabase
 import com.example.aichesscoach.data.SavedGame
 import com.example.aichesscoach.engine.BuiltinEngine
 import com.example.aichesscoach.engine.Difficulty
+import com.example.aichesscoach.review.GameReview
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.Side
@@ -41,7 +42,13 @@ enum class PlayerSide(val label: String, val dbValue: String) {
 
 data class ChatMessage(val isUser: Boolean, val text: String, val at: Long = System.currentTimeMillis())
 
-data class PendingPromotion(val fromIndex: Int, val toIndex: Int)
+data class ReviewUiState(
+    val busy: Boolean = false,
+    val completed: Int = 0,
+    val total: Int = 0,
+    val title: String = "",
+    val report: GameReview.Report? = null
+)
 
 data class ChessUiState(
     val board: List<String> = emptyBoard(),
@@ -68,6 +75,7 @@ data class ChessUiState(
     val isPlayersTurn: Boolean = true,
     val coachChat: List<ChatMessage> = emptyList(),
     val coachBusy: Boolean = false,
+    val reviewState: ReviewUiState? = null,
     val savedGames: List<SavedGame> = emptyList(),
     val games: Int = 0,
     val moves: Int = 0,
@@ -640,5 +648,26 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update {
             it.copy(coachChat = listOf(ChatMessage(false, "Chat cleared. Ask me anything about your games.")))
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Engine review
+    // ---------------------------------------------------------------------
+
+    fun startReview(sans: List<String>, title: String) {
+        if (_ui.value.reviewState?.busy == true) return
+        _ui.update { it.copy(reviewState = ReviewUiState(busy = true, title = title)) }
+        viewModelScope.launch(Dispatchers.Default) {
+            val report = runCatching {
+                GameReview.analyze(sans, onProgress = { done, total ->
+                    _ui.update { it.copy(reviewState = it.reviewState?.copy(completed = done, total = total)) }
+                })
+            }.getOrNull()
+            _ui.update { it.copy(reviewState = it.reviewState?.copy(busy = false, report = report)) }
+        }
+    }
+
+    fun closeReview() {
+        _ui.update { it.copy(reviewState = null) }
     }
 }

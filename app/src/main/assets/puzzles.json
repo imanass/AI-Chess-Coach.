@@ -1,0 +1,28 @@
+{
+  "puzzles": [
+    {"id": "m1_backrank_rook", "type": "mate1", "fen": "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "theme": "Back-rank mate", "rating": 350, "hint": "The black king is trapped behind its own pawns. Use the open a-file.", "solution": "a1a8"},
+    {"id": "m1_backrank_queen", "type": "mate1", "fen": "6k1/5ppp/8/8/8/8/5PPP/4Q1K1 w - - 0 1", "theme": "Back-rank mate", "rating": 350, "hint": "The e-file is completely open.", "solution": "e1e8"},
+    {"id": "m1_ladder_finish", "type": "mate1", "fen": "7k/R7/8/8/8/8/8/1R5K w - - 0 1", "theme": "Rook ladder", "rating": 400, "hint": "One rook guards the seventh rank. The other one delivers the blow.", "solution": "b1b8"},
+    {"id": "m1_smothered", "type": "mate1", "fen": "6rk/5ppp/8/4N3/8/8/8/4K3 w - - 0 1", "theme": "Smothered mate", "rating": 500, "hint": "The king's own pieces block every escape square. Find the knight jump.", "solution": "e5f7"},
+    {"id": "m1_queen_support", "type": "mate1", "fen": "7k/8/5K2/8/8/8/8/6Q1 w - - 0 1", "theme": "Queen + king mate", "rating": 400, "hint": "Put the queen right next to the enemy king, protected by your own king.", "solution": "g1g7"},
+    {"id": "m1_rook_eighth", "type": "mate1", "fen": "6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1", "theme": "Back-rank mate", "rating": 350, "hint": "The e-file leads straight to the king's rank.", "solution": "e1e8"},
+    {"id": "m1_promotion", "type": "mate1", "fen": "7k/5P1p/8/8/8/8/8/K7 w - - 0 1", "theme": "Promotion mate", "rating": 450, "hint": "Promote - but choose the piece that covers g7. A rook would not.", "solution": "f7f8q"},
+    {"id": "m1_box_mate", "type": "mate1", "fen": "6k1/8/6K1/8/8/8/8/7Q w - - 0 1", "theme": "Queen + king mate", "rating": 400, "hint": "Your king already covers f7, g7 and h7. Check from far away on the long diagonal.", "solution": "h1a8"},
+    {"id": "m1_edge_rook", "type": "mate1", "fen": "k7/2R5/1K6/8/8/8/8/7R w - - 0 1", "theme": "Edge mate", "rating": 400, "hint": "Your king covers a7 and b7. Deliver the check on the eighth rank.", "solution": "c7c8"},
+    {"id": "m1_rook_knight", "type": "mate1", "fen": "7k/8/5NK1/8/8/8/8/R7 w - - 0 1", "theme": "Team mate", "rating": 450, "hint": "Your king and knight cover every escape square. Bring the rook to the last rank.", "solution": "a1a8"},
+    {"id": "m2_ladder_one", "type": "mate2", "fen": "7k/8/R7/1R6/8/8/8/7K w - - 0 1", "theme": "Rook ladder", "rating": 800, "hint": "First cut off the seventh rank, then check on the eighth.", "solution": "b5b7"},
+    {"id": "m2_ladder_two", "type": "mate2", "fen": "7k/8/1R6/2R5/8/8/8/7K w - - 0 1", "theme": "Rook ladder", "rating": 800, "hint": "One rook to the seventh rank, the other to the eighth.", "solution": "c5c7"},
+    {"id": "m2_doubled_rooks_a", "type": "mate2", "fen": "3r2k1/5ppp/8/8/8/8/4R3/4R1K1 w - - 0 1", "theme": "Doubled rooks", "rating": 900, "hint": "Attack along the e-file. If the black rook captures, take back with mate.", "solution": "e2e8"},
+    {"id": "m2_doubled_rooks_b", "type": "mate2", "fen": "2r3k1/5ppp/8/8/8/8/4R3/4R1K1 w - - 0 1", "theme": "Doubled rooks", "rating": 900, "hint": "The c8 rook is the only defender of the eighth rank. Overload it.", "solution": "e2e8"},
+    {"id": "m2_kq_technique", "type": "mate2", "fen": "7k/8/6K1/8/8/8/8/6Q1 w - - 0 1", "theme": "Queen + king mate", "rating": 850, "hint": "Your king covers g7 and h7 already - the black king must step forward. Wait for it.", "solution": "g1b6"},
+    {"id": "mat_free_queen", "type": "material", "fen": "4k3/8/8/3q4/8/3R4/8/4K3 w - - 0 1", "theme": "Hanging piece", "rating": 400, "hint": "Nobody defends the queen.", "solution": "d3d5"},
+    {"id": "mat_free_rook", "type": "material", "fen": "4k3/8/8/3r4/8/3R4/8/4K3 w - - 0 1", "theme": "Hanging piece", "rating": 400, "hint": "Two rooks stare at each other down the d-file.", "solution": "d3d5"},
+    {"id": "mat_free_bishop", "type": "material", "fen": "4k3/8/8/3b4/8/3R4/8/4K3 w - - 0 1", "theme": "Hanging piece", "rating": 400, "hint": "The bishop on d5 has no bodyguard.", "solution": "d3d5"},
+    {"id": "mat_knight_fork", "type": "material", "fen": "4k3/8/4N3/3q4/8/8/8/4K3 w - - 0 1", "theme": "Knight fork", "rating": 550, "hint": "Find the square that attacks the queen AND checks the king at the same time.", "solution": "e6c7"},
+    {"id": "mat_queen_takes_rook", "type": "material", "fen": "r3k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "theme": "Hanging piece", "rating": 450, "hint": "The queen can reach the corner along the diagonal.", "solution": "d5a8"},
+    {"id": "mat_pawn_fork", "type": "material", "fen": "4k3/8/8/2r1r3/3P4/8/8/4K3 w - - 0 1", "theme": "Pawn capture", "rating": 400, "hint": "Your pawn eats diagonally.", "solution": "d4c5"},
+    {"id": "mat_discovered", "type": "material", "fen": "4k3/8/8/8/5q2/8/3R4/2B1K3 w - - 0 1", "theme": "Discovered attack", "rating": 650, "hint": "Move the rook away and your bishop's attack on the queen is revealed. A check makes it hurt.", "solution": "d2d8"},
+    {"id": "mat_hanging_knight", "type": "material", "fen": "4k3/8/8/8/8/4n3/3P4/4K3 w - - 0 1", "theme": "Hanging piece", "rating": 350, "hint": "Pawns capture diagonally.", "solution": "d2e3"},
+    {"id": "mat_pinned_knight", "type": "material", "fen": "4k3/8/8/4n3/3P4/8/8/4R1K1 w - - 0 1", "theme": "Pin", "rating": 500, "hint": "The knight cannot move - your rook pins it against the king. Take it.", "solution": "d4e5"}
+  ]
+}

@@ -20,9 +20,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
@@ -77,13 +79,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ChessCoachApp(vm: ChessViewModel = viewModel()) {
+fun ChessCoachApp(vm: ChessViewModel = viewModel(), learnVm: LearnViewModel = viewModel(), puzzleVm: PuzzleViewModel = viewModel()) {
     var tab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         "Play" to Icons.Default.SportsEsports,
+        "Learn" to Icons.Default.MenuBook,
+        "Puzzles" to Icons.Default.Extension,
         "Coach" to Icons.Default.School,
-        "Progress" to Icons.Default.Insights,
-        "Settings" to Icons.Default.Settings
+        "Progress" to Icons.Default.Insights
     )
     Scaffold(
         bottomBar = {
@@ -101,14 +104,19 @@ fun ChessCoachApp(vm: ChessViewModel = viewModel()) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                0 -> PlayScreen(vm, onGoToCoach = { tab = 1 })
-                1 -> CoachScreen(vm)
-                2 -> ProgressScreen(vm)
+                0 -> PlayScreen(vm, onGoToCoach = { tab = 3 }, onGoToSettings = { tab = 5 })
+                1 -> LearnScreen(learnVm)
+                2 -> PuzzleScreen(puzzleVm)
+                3 -> CoachScreen(vm)
+                4 -> ProgressScreen(vm)
                 else -> SettingsScreen(vm)
             }
         }
     }
-    GlobalDialogs(vm, onGoToCoach = { tab = 1 })
+    GlobalDialogs(vm, onGoToCoach = { tab = 3 })
+    vm.ui.collectAsState().value.reviewState?.let { review ->
+        ReviewOverlay(review) { vm.closeReview() }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +124,7 @@ fun ChessCoachApp(vm: ChessViewModel = viewModel()) {
 // ---------------------------------------------------------------------------
 
 @Composable
-fun PlayScreen(vm: ChessViewModel, onGoToCoach: () -> Unit) {
+fun PlayScreen(vm: ChessViewModel, onGoToCoach: () -> Unit, onGoToSettings: () -> Unit) {
     val state by vm.ui.collectAsState()
     val haptic = LocalHapticFeedback.current
 
@@ -129,6 +137,7 @@ fun PlayScreen(vm: ChessViewModel, onGoToCoach: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
+            IconButton(onClick = onGoToSettings) { Icon(Icons.Default.Settings, "Settings") }
         }
         if (state.engineThinking) {
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp))
@@ -598,7 +607,18 @@ fun ProgressScreen(vm: ChessViewModel) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { viewingGame = null }) { Text("Close") } }
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        vm.startReview(
+                            com.example.aichesscoach.chess.ChessUtils.parsePgnMoves(game.pgn),
+                            "Saved game"
+                        )
+                        viewingGame = null
+                    }) { Text("Analyze") }
+                    TextButton(onClick = { viewingGame = null }) { Text("Close") }
+                }
+            }
         )
     }
 
@@ -761,6 +781,10 @@ fun GlobalDialogs(vm: ChessViewModel, onGoToCoach: () -> Unit) {
             dismissButton = {
                 Row {
                     TextButton(onClick = { vm.coachReviewGame(); vm.dismissGameOver(); onGoToCoach() }) { Text("Coach review") }
+                    TextButton(onClick = {
+                        vm.startReview(state.sanHistory, "Your game")
+                        vm.dismissGameOver()
+                    }) { Text("Engine review") }
                     TextButton(onClick = { vm.dismissGameOver() }) { Text("Close") }
                 }
             }

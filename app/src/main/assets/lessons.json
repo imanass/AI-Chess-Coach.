@@ -1,0 +1,238 @@
+{
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "Meet the Pieces",
+      "blurb": "How every piece moves, one drill at a time.",
+      "lessons": [
+        {
+          "id": "c1l1",
+          "title": "The Rook",
+          "explanation": "Rooks move in straight lines - any number of squares along a rank (sideways) or a file (up and down). They cannot jump over other pieces, but on an empty board they zoom across.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/R6K w - - 0 1", "instruction": "Slide the rook sideways along the first rank: a1 to e1.", "tasks": [{"from": "a1", "to": "e1"}], "hint": "Rooks travel along ranks - straight sideways."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/R6K w - - 0 1", "instruction": "Now send the rook up the a-file to a8.", "tasks": [{"from": "a1", "to": "a8"}], "hint": "Files are vertical. a8 also checks the black king!"},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/7R w - - 0 1", "instruction": "Slide this rook across the first rank to a1.", "tasks": [{"from": "h1", "to": "a1"}], "hint": "Straight sideways, just like before."}
+          ]
+        },
+        {
+          "id": "c1l2",
+          "title": "The Bishop",
+          "explanation": "Bishops slide along diagonals only. Each bishop stays on one colour for its whole life - the c1 bishop will only ever visit dark squares. No straight lines, no jumping over pieces.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/2B4K w - - 0 1", "instruction": "Slide the bishop along the diagonal to h6.", "tasks": [{"from": "c1", "to": "h6"}], "hint": "c1-d2-e3-f4-g5-h6, one diagonal sweep."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/2B4K w - - 0 1", "instruction": "Now send it the other way, to a3.", "tasks": [{"from": "c1", "to": "a3"}], "hint": "c1-b2-a3 is the other diagonal."}
+          ]
+        },
+        {
+          "id": "c1l3",
+          "title": "The Queen",
+          "explanation": "The queen is a rook and a bishop combined: straight lines AND diagonals. She is the strongest piece - worth about nine pawns - so keep her safe early on.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/3Q3K w - - 0 1", "instruction": "Push the queen up the d-file to d8.", "tasks": [{"from": "d1", "to": "d8"}], "hint": "Straight line, like a rook."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/3Q3K w - - 0 1", "instruction": "Now glide diagonally to h5.", "tasks": [{"from": "d1", "to": "h5"}], "hint": "d1-e2-f3-g4-h5."}
+          ]
+        },
+        {
+          "id": "c1l4",
+          "title": "The Knight",
+          "explanation": "Knights move in an L: two squares one way, then one square sideways. They are the only piece that jumps over anything - great for escaping crowded positions.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/6NK w - - 0 1", "instruction": "Jump the knight to f3.", "tasks": [{"from": "g1", "to": "f3"}], "hint": "Two up, one left."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/6NK w - - 0 1", "instruction": "This time jump to e2.", "tasks": [{"from": "g1", "to": "e2"}], "hint": "Two left, one up."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/6NK w - - 0 1", "instruction": "And now to h3.", "tasks": [{"from": "g1", "to": "h3"}], "hint": "Two right... or one right and two up. Your choice of path, same L."}
+          ]
+        },
+        {
+          "id": "c1l5",
+          "title": "King and Pawns",
+          "explanation": "Pawns march forward one square (or two from their starting square) and capture diagonally. They never retreat. The king moves one square in any direction - keep him safe, but he is a fighter in the endgame.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/4P3/4K3 w - - 0 1", "instruction": "Push the pawn two squares: e2 to e4.", "tasks": [{"from": "e2", "to": "e4"}], "hint": "From its starting square a pawn may step two."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/4P3/4K3 w - - 0 1", "instruction": "This time advance it one square to e3.", "tasks": [{"from": "e2", "to": "e3"}], "hint": "Pawns only move forward."},
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/4K3 w - - 0 1", "instruction": "Step the king forward to e2.", "tasks": [{"from": "e1", "to": "e2"}], "hint": "One square at a time, any direction."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Check, Escape, Mate",
+      "blurb": "Attack the king, dodge attacks, and deliver your first checkmate.",
+      "lessons": [
+        {
+          "id": "c2l1",
+          "title": "Giving Check",
+          "explanation": "A check is an attack on the king. The king must respond immediately: move away, block, or capture the attacker. Let's practice checking.",
+          "exercises": [
+            {"type": "move", "fen": "7k/8/8/8/8/8/8/R6K w - - 0 1", "instruction": "Put the rook on a8 to CHECK the black king.", "tasks": [{"from": "a1", "to": "a8"}], "hint": "The whole a-file is open."}
+          ]
+        },
+        {
+          "id": "c2l2",
+          "title": "Getting Out of Check",
+          "explanation": "When your king is in check you have no time for clever plans - deal with the check first. Here the black rook checks you along the first rank, so step off that rank.",
+          "exercises": [
+            {"type": "move", "fen": "4k3/8/8/8/8/8/8/r3K3 w - - 0 1", "instruction": "Your king is in check! Move him somewhere safe.", "tasks": [{"from": "e1", "to": "d2"}, {"from": "e1", "to": "e2"}, {"from": "e1", "to": "f2"}], "alternatives": [{"from": "e1", "to": "d2"}, {"from": "e1", "to": "e2"}, {"from": "e1", "to": "f2"}], "hint": "Any square on the second rank is safe. Staying on the first rank is not."}
+          ]
+        },
+        {
+          "id": "c2l3",
+          "title": "Blocking a Check",
+          "explanation": "If the checking piece attacks from far away, you can stop the attack by placing a piece in its path. The bishop checks your king along the diagonal - park the rook in front of the king.",
+          "exercises": [
+            {"type": "move", "fen": "4k3/8/8/8/8/2b5/8/4RK2 w - - 0 1", "instruction": "Block the bishop's check with your rook.", "tasks": [{"from": "d1", "to": "d2"}], "hint": "The check travels c3-d2-e1. Stand on d2."}
+          ]
+        },
+        {
+          "id": "c2l4",
+          "title": "Your First Checkmate",
+          "explanation": "Checkmate is check with no escape: no safe squares, no block, no capture. Two rooks work beautifully together - one cuts off ranks, the other delivers.",
+          "exercises": [
+            {"type": "mate1", "fen": "7k/R7/8/8/8/8/8/1R5K w - - 0 1", "instruction": "Mate in one with the b1 rook!", "hint": "The a7 rook already covers the seventh rank. Push the other rook to the eighth."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Winning Material",
+      "blurb": "Grab free pieces, and trap defenders with forks.",
+      "lessons": [
+        {
+          "id": "c3l1",
+          "title": "Hanging Pieces",
+          "explanation": "A 'hanging' piece is one that is attacked but not defended. Before every move, scan the board for undefended pieces - they are free gifts.",
+          "exercises": [
+            {"type": "puzzle", "fen": "4k3/8/8/3q4/8/3R4/8/4K3 w - - 0 1", "instruction": "The black queen is completely undefended. Take her!", "hint": "Your rook travels straight up the d-file."}
+          ]
+        },
+        {
+          "id": "c3l2",
+          "title": "The Knight Fork",
+          "explanation": "A fork attacks two things at once. Knights are fork specialists - one jump can hit a king and a queen together. The king must move, and then you take the queen.",
+          "exercises": [
+            {"type": "puzzle", "fen": "4k3/8/4N3/3q4/8/8/8/4K3 w - - 0 1", "instruction": "Find the knight move that attacks the queen AND checks the king.", "hint": "Look for a square that jumps to both d5 and e8."}
+          ]
+        },
+        {
+          "id": "c3l3",
+          "title": "Discovered Attack",
+          "explanation": "When one piece stands in front of another, moving the front piece 'discovers' the attack of the one behind. Even better: move the front piece WITH a threat, so the opponent has two problems.",
+          "exercises": [
+            {"type": "puzzle", "fen": "4k3/8/8/8/5q2/8/3R4/2B1K3 w - - 0 1", "instruction": "Move the rook with a check - the bishop behind it will be eyeing the queen.", "hint": "Check the black king along the eighth rank."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "Endgame Essentials",
+      "blurb": "Promote pawns and finish with king and queen.",
+      "lessons": [
+        {
+          "id": "c4l1",
+          "title": "Promotion",
+          "explanation": "When a pawn reaches the last rank it becomes a queen (almost always the best choice). An extra queen usually decides the game on the spot.",
+          "exercises": [
+            {"type": "move", "fen": "k7/6P1/8/8/8/8/8/6K1 w - - 0 1", "instruction": "March the pawn to g8 and promote it.", "tasks": [{"from": "g7", "to": "g8"}], "hint": "One square forward - then choose your new piece (queen!)."}
+          ]
+        },
+        {
+          "id": "c4l2",
+          "title": "Queen and King Mate",
+          "explanation": "To mate with king and queen, your king helps by covering escape squares while the queen steps in for the kill - protected by her own king.",
+          "exercises": [
+            {"type": "mate1", "fen": "7k/8/5K2/8/8/8/8/6Q1 w - - 0 1", "instruction": "Mate in one: use your king to protect the queen.", "hint": "The queen steps up the g-file, right next to the black king - guarded by yours."}
+          ]
+        },
+        {
+          "id": "c4l3",
+          "title": "Back-Rank Danger",
+          "explanation": "Pawns in front of the king can be a shield or a cage. If the rank behind the pawns is open, a rook or queen can mate instantly. Always give your king breathing room (castling helps!).",
+          "exercises": [
+            {"type": "mate1", "fen": "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "instruction": "The black king is caged by its own pawns. Mate in one!", "hint": "The a-file leads straight to the eighth rank."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "title": "Opening Principles",
+      "blurb": "Start every game with the right plan.",
+      "lessons": [
+        {
+          "id": "c5l1",
+          "title": "Control the Center",
+          "explanation": "The four center squares (d4, e4, d5, e5) are the high ground. Pieces in the center see more of the board. Classic first move: king's pawn two squares forward.",
+          "exercises": [
+            {"type": "move", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1", "instruction": "Grab the center: play e2-e4.", "tasks": [{"from": "e2", "to": "e4"}], "hint": "The king's pawn, two squares forward."}
+          ]
+        },
+        {
+          "id": "c5l2",
+          "title": "Develop a Knight",
+          "explanation": "Bring your pieces off the back rank quickly - knights before bishops is a good rule. The knight to f3 attacks the center and prepares to castle.",
+          "exercises": [
+            {"type": "move", "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2", "instruction": "Black mirrored you. Now develop: knight to f3.", "tasks": [{"from": "g1", "to": "f3"}], "hint": "The classic developing move, attacking e5."}
+          ]
+        },
+        {
+          "id": "c5l3",
+          "title": "Develop the Bishop",
+          "explanation": "Bishops love long open diagonals. The Italian bishop on c4 aims straight at the weakest square in Black's camp: f7.",
+          "exercises": [
+            {"type": "move", "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 1 3", "instruction": "Develop the bishop to c4.", "tasks": [{"from": "f1", "to": "c4"}], "hint": "The Italian Game: Bc4 eyes f7."}
+          ]
+        },
+        {
+          "id": "c5l4",
+          "title": "Castle Early",
+          "explanation": "Castling does two jobs at once: tucks the king behind pawns and brings a rook toward the center. Aim to castle in the first ten moves.",
+          "exercises": [
+            {"type": "move", "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", "instruction": "Castle kingside: king e1 to g1.", "tasks": [{"from": "e1", "to": "g1"}], "hint": "Tap the king, then the square two to the right. Both f1 and g1 are empty - that is the point!"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c6",
+      "title": "Tactics School",
+      "blurb": "Combine everything: forks, pins, mates.",
+      "lessons": [
+        {
+          "id": "c6l1",
+          "title": "Fork Recap",
+          "explanation": "You met the knight fork in Chapter 3. Here it is again - knights that sit near enemy royalty are always worth a second look.",
+          "exercises": [
+            {"type": "puzzle", "fen": "4k3/8/4N3/3q4/8/8/8/4K3 w - - 0 1", "instruction": "Fork the king and queen with one knight jump.", "hint": "Which square attacks both d5 and e8?"}
+          ]
+        },
+        {
+          "id": "c6l2",
+          "title": "Pin Recap",
+          "explanation": "A pin freezes a piece: it cannot move without exposing something more valuable behind it. Pinned pieces make perfect targets.",
+          "exercises": [
+            {"type": "puzzle", "fen": "4k3/8/8/4n3/3P4/8/8/4R1K1 w - - 0 1", "instruction": "The knight is pinned against the king. Win it.", "hint": "Your rook on the e-file holds him in place - a pawn can take him."}
+          ]
+        },
+        {
+          "id": "c6l3",
+          "title": "Pattern: Corner Mate",
+          "explanation": "Many beginner games end with a corner mate like this. Memorize the pattern: queen beside the king, protected by her own king.",
+          "exercises": [
+            {"type": "mate1", "fen": "7k/8/5K2/8/8/8/8/6Q1 w - - 0 1", "instruction": "Mate in one with queen and king working together.", "hint": "Queen to g7, protected by the king on f6."}
+          ]
+        },
+        {
+          "id": "c6l4",
+          "title": "Pattern: Promotion Mate",
+          "explanation": "Promotion is not just about getting a queen - sometimes the new queen mates instantly. Choose the promoting piece carefully.",
+          "exercises": [
+            {"type": "mate1", "fen": "7k/5P1p/8/8/8/8/8/K7 w - - 0 1", "instruction": "Promote with checkmate!", "hint": "A rook would not cover g7. Pick the right piece."}
+          ]
+        }
+      ]
+    }
+  ]
+}
