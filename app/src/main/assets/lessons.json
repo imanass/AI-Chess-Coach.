@@ -81,7 +81,7 @@
           "title": "Blocking a Check",
           "explanation": "If the checking piece attacks from far away, you can stop the attack by placing a piece in its path. The bishop checks your king along the diagonal - park the rook in front of the king.",
           "exercises": [
-            {"type": "move", "fen": "4k3/8/8/8/8/2b5/8/4RK2 w - - 0 1", "instruction": "Block the bishop's check with your rook.", "tasks": [{"from": "d1", "to": "d2"}], "hint": "The check travels c3-d2-e1. Stand on d2."}
+            {"type": "move", "fen": "4k3/8/8/8/8/2b5/8/3RK3 w - - 0 1", "instruction": "Block the bishop's check with your rook.", "tasks": [{"from": "d1", "to": "d2"}], "hint": "The check travels c3-d2-e1. Stand on d2."}
           ]
         },
         {
