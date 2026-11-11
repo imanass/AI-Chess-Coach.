@@ -6,7 +6,8 @@ import com.example.aichesscoach.puzzles.Puzzle
 import com.example.aichesscoach.puzzles.TrainingBank
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
-import org.junit.Assert.assertTrueimport org.junit.Assert.fail
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
 
