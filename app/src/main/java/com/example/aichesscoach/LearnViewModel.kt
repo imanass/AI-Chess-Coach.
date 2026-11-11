@@ -13,7 +13,6 @@ import com.example.aichesscoach.puzzles.Lesson
 import com.example.aichesscoach.puzzles.TrainingBank
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
-import com.github.bhlangonijr.chesslib.Side
 import com.github.bhlangonijr.chesslib.move.Move
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -216,8 +215,8 @@ class LearnViewModel(app: Application) : AndroidViewModel(app) {
             }
             Exercise.TYPE_MATE1 -> if (work.isMated()) Outcome.ExerciseDone else Outcome.Rejected
             Exercise.TYPE_PUZZLE -> {
-                val stmScore = BuiltinEngine.analyzePosition(work, budgetMs = 500, maxDepth = 4).second
-                val moverScore = if (work.sideToMove == Side.WHITE) -stmScore else stmScore
+                // Side to move is the opponent; negate for the solver's perspective.
+                val moverScore = -BuiltinEngine.analyzePosition(work, budgetMs = 500, maxDepth = 4).second
                 if (moverScore >= 250) Outcome.ExerciseDone else Outcome.Rejected
             }
             else -> Outcome.Rejected

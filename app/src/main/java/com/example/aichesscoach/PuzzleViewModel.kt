@@ -11,7 +11,6 @@ import com.example.aichesscoach.puzzles.Puzzle
 import com.example.aichesscoach.puzzles.TrainingBank
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
-import com.github.bhlangonijr.chesslib.Side
 import com.github.bhlangonijr.chesslib.move.Move
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -170,14 +169,14 @@ class PuzzleViewModel(app: Application) : AndroidViewModel(app) {
                     verdict = Verdict.SOLVED
                 } else when (puzzle.type) {
                     Puzzle.TYPE_MATE1 -> Verdict.REJECT
-                    Puzzle.TYPE_MATE2 -> if (BuiltinEngine.isGettingMated(work, budgetMs = 1000, maxDepth = 6)) {
+                    Puzzle.TYPE_MATE2 -> if (BuiltinEngine.isGettingMated(work, budgetMs = 1000, maxDepth = 3)) {
                         verdict = Verdict.CONTINUE
-                        reply = BuiltinEngine.analyzePosition(work, budgetMs = 800, maxDepth = 5).first
+                        reply = BuiltinEngine.analyzePosition(work, budgetMs = 500, maxDepth = 3).first
                         reply?.let { work.doMove(it) }
                     } else Verdict.REJECT
                     Puzzle.TYPE_MATERIAL -> {
-                        val stmScore = BuiltinEngine.analyzePosition(work, budgetMs = 600, maxDepth = 4).second
-                        val moverScore = if (work.sideToMove == Side.WHITE) -stmScore else stmScore
+                        // Side to move is the opponent; negate for the solver's perspective.
+                        val moverScore = -BuiltinEngine.analyzePosition(work, budgetMs = 600, maxDepth = 4).second
                         if (moverScore >= 250) verdict = Verdict.SOLVED else Verdict.REJECT
                     }
                     else -> Verdict.REJECT

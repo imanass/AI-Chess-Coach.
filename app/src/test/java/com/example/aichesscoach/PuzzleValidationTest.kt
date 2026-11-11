@@ -6,9 +6,7 @@ import com.example.aichesscoach.puzzles.Puzzle
 import com.example.aichesscoach.puzzles.TrainingBank
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
-import com.github.bhlangonijr.chesslib.Side
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
+import org.junit.Assert.assertTrueimport org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
 
@@ -56,15 +54,15 @@ class PuzzleValidationTest {
                         }
                     }
                     Puzzle.TYPE_MATE2 -> {
-                        if (!BuiltinEngine.hasForcedMate(b, budgetMs = 1200, maxDepth = 6)) {
+                        if (!BuiltinEngine.hasForcedMate(b, budgetMs = 4000, maxDepth = 3)) {
                             failures.add("${puzzle.id}: no forced mate found in '${puzzle.fen}'")
                         }
                     }
                     Puzzle.TYPE_MATERIAL -> {
                         val winning = b.legalMoves().any { move ->
                             b.doMove(move)
-                            val stmScore = BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
-                            val moverScore = if (b.sideToMove == Side.WHITE) -stmScore else stmScore
+                            // Side to move is the opponent; negate for the solver's perspective.
+                            val moverScore = -BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
                             b.undoMove()
                             moverScore >= 250
                         }
@@ -114,10 +112,10 @@ class PuzzleValidationTest {
                 b.doMove(move)
                 val solved = when (puzzle.type) {
                     Puzzle.TYPE_MATE1 -> b.isMated()
-                    Puzzle.TYPE_MATE2 -> b.isMated() || BuiltinEngine.isGettingMated(b, budgetMs = 1000, maxDepth = 6)
+                    Puzzle.TYPE_MATE2 -> b.isMated() || BuiltinEngine.isGettingMated(b, budgetMs = 2000, maxDepth = 3)
                     Puzzle.TYPE_MATERIAL -> {
-                        val stmScore = BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
-                        val moverScore = if (b.sideToMove == Side.WHITE) -stmScore else stmScore
+                        // Side to move is the opponent; negate for the solver's perspective.
+                        val moverScore = -BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
                         moverScore >= 250
                     }
                     else -> false
@@ -168,8 +166,8 @@ class PuzzleValidationTest {
                             "puzzle" -> {
                                 val winning = b.legalMoves().any { move ->
                                     b.doMove(move)
-                                    val stmScore = BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
-                                    val moverScore = if (b.sideToMove == Side.WHITE) -stmScore else stmScore
+                                    // Side to move is the opponent; negate for the solver's perspective.
+                                    val moverScore = -BuiltinEngine.analyzePosition(b, budgetMs = 500, maxDepth = 4).second
                                     b.undoMove()
                                     moverScore >= 250
                                 }

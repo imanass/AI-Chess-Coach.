@@ -12,7 +12,7 @@
           "exercises": [
             {"type": "move", "fen": "7k/8/8/8/8/8/8/R6K w - - 0 1", "instruction": "Slide the rook sideways along the first rank: a1 to e1.", "tasks": [{"from": "a1", "to": "e1"}], "hint": "Rooks travel along ranks - straight sideways."},
             {"type": "move", "fen": "7k/8/8/8/8/8/8/R6K w - - 0 1", "instruction": "Now send the rook up the a-file to a8.", "tasks": [{"from": "a1", "to": "a8"}], "hint": "Files are vertical. a8 also checks the black king!"},
-            {"type": "move", "fen": "7k/8/8/8/8/8/8/7R w - - 0 1", "instruction": "Slide this rook across the first rank to a1.", "tasks": [{"from": "h1", "to": "a1"}], "hint": "Straight sideways, just like before."}
+            {"type": "move", "fen": "k7/8/8/8/8/8/8/7R w - - 0 1", "instruction": "Slide this rook across the first rank to a1.", "tasks": [{"from": "h1", "to": "a1"}], "hint": "Straight sideways, just like before."}
           ]
         },
         {
