@@ -12,6 +12,7 @@ import com.example.aichesscoach.data.ChessDatabase
 import com.example.aichesscoach.data.SavedGame
 import com.example.aichesscoach.engine.BuiltinEngine
 import com.example.aichesscoach.engine.Difficulty
+import com.example.aichesscoach.engine.StockfishEngine
 import com.example.aichesscoach.review.GameReview
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
@@ -94,6 +95,8 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
     private val database = ChessDatabase.get(app)
     private val dao = database.games()
     private val api = CoachApi()
+    private val appContext = app
+    private val hasStockfish = StockfishEngine.isAvailable(app)
     private var chess = Board()
     private val _ui = MutableStateFlow(ChessUiState(board = renderBoard(chess)))
     val ui = _ui.asStateFlow()
@@ -472,7 +475,7 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------------------------------------------------------------
-    // Built-in engine
+    // Engines (Stockfish 19 on-device, with built-in fallback)
     // ---------------------------------------------------------------------
 
     private fun maybeTriggerEngine() {
@@ -487,7 +490,14 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
             val move = withContext(Dispatchers.Default) {
                 val position = Board()
                 position.loadFromFen(fen)
-                BuiltinEngine.search(position, difficulty)
+                val stockfishMove = if (hasStockfish) when (difficulty) {
+                    Difficulty.HARD -> StockfishEngine.analyse(appContext, fen, depth = 12)
+                    Difficulty.MEDIUM -> StockfishEngine.analyse(
+                        appContext, fen, movetimeMs = 700, limitElo = 1500
+                    )
+                    else -> null // EASY stays on the gentler built-in engine
+                }?.let { analysis -> StockfishEngine.uciToMove(position, analysis.bestMoveUci) } else null
+                stockfishMove ?: BuiltinEngine.search(position, difficulty)
             }
             if (move == null) {
                 _ui.update { it.copy(engineThinking = false) }
@@ -514,12 +524,25 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
         }
         val fen = chess.fen
         evalJob = viewModelScope.launch {
-            val cp = withContext(Dispatchers.Default) {
-                val position = Board()
-                position.loadFromFen(fen)
-                BuiltinEngine.evaluateWhiteCp(position)
+            val label = if (hasStockfish) {
+                val analysis = StockfishEngine.analyse(appContext, fen, depth = 10)
+                if (analysis != null) {
+                    val stm = analysis.scoreStm(BuiltinEngine.MATE_OPEN)
+                    val white = if (chess.sideToMove == Side.WHITE) stm else -stm
+                    BuiltinEngine.formatEval(white)
+                } else {
+                    val position = Board()
+                    position.loadFromFen(fen)
+                    BuiltinEngine.formatEval(BuiltinEngine.evaluateWhiteCp(position))
+                }
+            } else {
+                withContext(Dispatchers.Default) {
+                    val position = Board()
+                    position.loadFromFen(fen)
+                    BuiltinEngine.formatEval(BuiltinEngine.evaluateWhiteCp(position))
+                }
             }
-            _ui.update { it.copy(evalLabel = BuiltinEngine.formatEval(cp)) }
+            _ui.update { it.copy(evalLabel = label) }
         }
     }
 
@@ -596,10 +619,24 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
     // Coach
     // ---------------------------------------------------------------------
 
-    private fun engineNote(): String = runCatching {
-        val cp = BuiltinEngine.evaluateWhiteCp(chess)
-        "Note from the app's built-in lightweight analyzer (material + piece-square tables, not Stockfish): ${BuiltinEngine.formatEval(cp)} from White's perspective."
-    }.getOrDefault("No automated evaluation is available for this position.")
+    private suspend fun engineNote(): String {
+        if (hasStockfish) {
+            val analysis = StockfishEngine.analyse(appContext, chess.fen, depth = 12)
+            if (analysis != null) {
+                val stm = analysis.scoreStm(BuiltinEngine.MATE_OPEN)
+                val white = if (chess.sideToMove == Side.WHITE) stm else -stm
+                val line = StockfishEngine.pvToSan(chess.fen, analysis.pvUci)
+                return "Note from the on-device engine (Stockfish 19, depth ${analysis.depth}): " +
+                    "eval ${BuiltinEngine.formatEval(white)} from White's perspective" +
+                    (if (line.isNotBlank()) "; its best line is $line." else ".") +
+                    " The eval is a search estimate, not a certainty."
+            }
+        }
+        return runCatching {
+            val cp = BuiltinEngine.evaluateWhiteCp(chess)
+            "Note from the app's built-in lightweight analyzer (material + piece-square tables, not Stockfish): ${BuiltinEngine.formatEval(cp)} from White's perspective."
+        }.getOrDefault("No automated evaluation is available for this position.")
+    }
 
     private fun askCoach(userText: String, request: suspend () -> String) {
         if (_ui.value.coachBusy) return
@@ -659,9 +696,14 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(reviewState = ReviewUiState(busy = true, title = title)) }
         viewModelScope.launch(Dispatchers.Default) {
             val report = runCatching {
-                GameReview.analyze(sans, onProgress = { done, total ->
-                    _ui.update { it.copy(reviewState = it.reviewState?.copy(completed = done, total = total)) }
-                })
+                GameReview.analyze(
+                    sans,
+                    engine = if (hasStockfish) GameReview.StockfishAdapter(appContext, depth = 12)
+                    else GameReview.BuiltinAdapter,
+                    onProgress = { done, total ->
+                        _ui.update { it.copy(reviewState = it.reviewState?.copy(completed = done, total = total)) }
+                    }
+                )
             }.getOrNull()
             _ui.update { it.copy(reviewState = it.reviewState?.copy(busy = false, report = report)) }
         }

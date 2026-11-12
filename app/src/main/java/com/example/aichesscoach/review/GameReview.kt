@@ -1,7 +1,9 @@
 package com.example.aichesscoach.review
 
+import android.content.Context
 import com.example.aichesscoach.chess.ChessUtils
 import com.example.aichesscoach.engine.BuiltinEngine
+import com.example.aichesscoach.engine.StockfishEngine
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Side
 import kotlinx.coroutines.Dispatchers
@@ -11,10 +13,35 @@ import kotlin.math.roundToInt
 
 /**
  * Offline game review: replays a game and classifies every move by comparing
- * the played move against the engine's best choice. Works entirely on-device
- * with the built-in engine - no API key required.
+ * the played move against the engine's best choice. Uses Stockfish 19 when it
+ * is available on the device, otherwise the built-in engine - no API key
+ * required.
  */
 object GameReview {
+
+    /** Engine abstraction so review can run on Stockfish or the built-in engine. */
+    interface Engine {
+        val mateCeiling: Int
+        suspend fun analyzePosition(board: Board, budgetMs: Long, maxDepth: Int): Pair<Move?, Int>
+    }
+
+    /** Adapter over the lightweight built-in engine (JVM tests and fallback). */
+    object BuiltinAdapter : Engine {
+        override val mateCeiling: Int = BuiltinEngine.MATE_OPEN
+        override suspend fun analyzePosition(board: Board, budgetMs: Long, maxDepth: Int) =
+            BuiltinEngine.analyzePosition(board, budgetMs, maxDepth)
+    }
+
+    /** Adapter over the on-device Stockfish 19 binary. */
+    class StockfishAdapter(private val context: Context, private val depth: Int = 12) : Engine {
+        override val mateCeiling: Int = BuiltinEngine.MATE_OPEN
+        override suspend fun analyzePosition(board: Board, budgetMs: Long, maxDepth: Int): Pair<Move?, Int> {
+            val analysis = StockfishEngine.analyse(context, board.fen, depth = depth)
+                ?: return BuiltinEngine.analyzePosition(board, budgetMs, maxDepth)
+            return StockfishEngine.uciToMove(board, analysis.bestMoveUci) to analysis.scoreStm(mateCeiling)
+        }
+    }
+
 
     enum class Quality(val symbol: String, val label: String) {
         BRILLIANT("!!", "Brilliant"),
@@ -70,6 +97,7 @@ object GameReview {
         startFen: String? = null,
         budgetMs: Long = 220,
         maxDepth: Int = 4,
+        engine: Engine = BuiltinAdapter,
         onProgress: suspend (Int, Int) -> Unit = { _, _ -> }
     ): Report = withContext(Dispatchers.Default) {
         val board = Board()
@@ -79,7 +107,7 @@ object GameReview {
 
         for (san in sans) {
             val mover = board.sideToMove
-            val (bestMove, bestScore) = BuiltinEngine.analyzePosition(board, budgetMs, maxDepth)
+            val (bestMove, bestScore) = engine.analyzePosition(board, budgetMs, maxDepth)
 
             // Material sacrificed by the played move (static, approximate).
             val materialBefore = ChessUtils.materialWhiteCp(board)
@@ -99,7 +127,7 @@ object GameReview {
             val bestSan = bestMove?.let { ChessUtils.sanFor(board, it) }
 
             board.doMove(played)
-            val opponentScore = BuiltinEngine.analyzePosition(board, budgetMs, maxDepth).second
+            val opponentScore = engine.analyzePosition(board, budgetMs, maxDepth).second
             val playedScore = -opponentScore
             val sanFull = ChessUtils.sanWithSuffix(sanBase, board)
             val materialAfter = ChessUtils.materialWhiteCp(board)
@@ -108,8 +136,8 @@ object GameReview {
             val lossRaw = if (mover == Side.WHITE) bestScore - playedScore else playedScore - bestScore
             val lossCp = lossRaw.coerceAtLeast(0)
 
-            val bestWasMate = bestScore >= BuiltinEngine.MATE_OPEN - 64
-            val playedIsMate = playedScore >= BuiltinEngine.MATE_OPEN - 64
+            val bestWasMate = bestScore >= engine.mateCeiling - 64
+            val playedIsMate = playedScore >= engine.mateCeiling - 64
             val missedMate = bestWasMate && !playedIsMate
 
             val sacrifice = when (mover) {

@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.aichesscoach"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0.0"
+        versionCode = 4
+        versionName = "4.0.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,6 +23,10 @@ android {
         jvmTarget = "17"
     }
     buildFeatures { compose = true }
+    packaging {
+        // Extract libstockfish.so to disk so it can be executed as a UCI subprocess.
+        jniLibs { useLegacyPackaging = true }
+    }
 }
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))

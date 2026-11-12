@@ -722,7 +722,7 @@ fun SettingsScreen(vm: ChessViewModel) {
 
         // --- Engine ---
         Text("Game & engine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("The computer opponent is a built-in lightweight engine (alpha-beta search, material + piece-square evaluation). It is original code — no Stockfish binary is bundled.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("The computer opponent, position evaluation and game review run on Stockfish 19 - the world's strongest open-source chess engine - fully on this device (GPL-3.0; © the Stockfish developers). On devices without 64-bit support the app falls back to its built-in lightweight engine.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text("Show position evaluation")
             Switch(checked = state.showEval, onCheckedChange = { vm.setShowEval(it) })
