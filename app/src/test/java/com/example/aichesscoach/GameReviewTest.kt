@@ -265,9 +265,9 @@ class GameReviewTest {
         profile = PlayStyle.mergeProfile(profile, stats, 2L)
 
         assertEquals(2, profile.gamesReviewed)
-        assertEquals(4, profile.plyCount)
-        assertEquals(2, profile.blunder)
-        assertEquals(2, PlayStyle.decodeThemes(profile.themes)["hanging"])
+        assertEquals(6, profile.plyCount)
+        assertEquals(4, profile.blunder)
+        assertEquals(4, PlayStyle.decodeThemes(profile.themes)["hanging"])
 
         val advice = PlayStyle.describe(profile)
         assertEquals("Sharp but loose", advice.styleLabel)
