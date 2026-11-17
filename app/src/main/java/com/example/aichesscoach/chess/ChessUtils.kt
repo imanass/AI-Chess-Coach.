@@ -95,6 +95,28 @@ object ChessUtils {
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() }
 
+    /**
+     * Parses a full annotated PGN (headers, {comments}, (variations), $NAGs)
+     * down to the plain SAN move list. Handles the format exported by
+     * chess.com and lichess.
+     */
+    fun parseAnnotatedPgn(pgn: String): List<String> {
+        val body = pgn.lineSequence()
+            .filterNot { it.trimStart().startsWith("[") && it.contains("\"") }
+            .joinToString(" ")
+        val withoutComments = body
+            .replace(Regex("\\{[^}]*}"), " ")           // {comments}
+            .replace(Regex(";.*"), " ")                  // rest-of-line comments
+            .replace(Regex("\\$\\d+"), " ")              // NAGs like $12
+            .replace(Regex("\\d+\\.{1,3}"), " ")         // move numbers incl. "1..." ellipses
+        // Strip nested variations from the inside out.
+        var withoutVariations = withoutComments
+        while (withoutVariations.contains("(")) {
+            withoutVariations = withoutVariations.replace(Regex("\\([^()]*\\)"), " ")
+        }
+        return parsePgnMoves(withoutVariations)
+    }
+
     /** Builds PGN move text from a SAN list. */
     fun toPgn(sans: List<String>): String = buildString {
         var i = 0
@@ -119,6 +141,20 @@ object ChessUtils {
                 "ROOK" -> 500; "QUEEN" -> 900; else -> 0
             }
             total += if (name.startsWith("WHITE_")) value else -value
+        }
+        return total
+    }
+
+    /** Combined material of both sides in centipawns - used to detect the endgame phase. */
+    fun materialTotalCp(board: Board): Int {
+        var total = 0
+        for (square in Square.values()) {
+            val name = board.getPiece(square).name
+            if (name == "NONE") continue
+            total += when (name.substringAfter('_')) {
+                "PAWN" -> 100; "KNIGHT" -> 300; "BISHOP" -> 320
+                "ROOK" -> 500; "QUEEN" -> 900; else -> 0
+            }
         }
         return total
     }

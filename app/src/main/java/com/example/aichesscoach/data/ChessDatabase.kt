@@ -28,6 +28,7 @@ data class SavedGame(
     companion object {
         const val MODE_VS_COMPUTER = "vs Computer"
         const val MODE_TWO_PLAYERS = "Two players"
+        const val MODE_CHESS_COM = "Chess.com"
         const val SIDE_WHITE = "White"
         const val SIDE_BLACK = "Black"
     }
@@ -48,6 +49,35 @@ data class PuzzleStats(
     val streak: Int = 0,
     val bestStreak: Int = 0,
     val recent: String = ""
+)
+
+@Entity(tableName = "player_profile")
+data class PlayerProfile(
+    @PrimaryKey val id: Int = 1,
+    val updatedAt: Long = 0,
+    val gamesReviewed: Int = 0,
+    /** Sum of per-move accuracy values; divide by plyCount for the average. */
+    val accuracySum: Double = 0.0,
+    val plyCount: Int = 0,
+    val brilliant: Int = 0,
+    val great: Int = 0,
+    val best: Int = 0,
+    val excellent: Int = 0,
+    val good: Int = 0,
+    val book: Int = 0,
+    val inaccuracy: Int = 0,
+    val mistake: Int = 0,
+    val blunder: Int = 0,
+    val miss: Int = 0,
+    val openingLossSum: Double = 0.0,
+    val openingPlies: Int = 0,
+    val middleLossSum: Double = 0.0,
+    val middlePlies: Int = 0,
+    val endLossSum: Double = 0.0,
+    val endPlies: Int = 0,
+    val captures: Int = 0,
+    /** Aggregated mistake themes, stored as "themeId:count,themeId:count". */
+    val themes: String = ""
 )
 
 @Dao
@@ -75,6 +105,14 @@ interface PuzzleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(stats: PuzzleStats)
 }
 
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM player_profile WHERE id = 1") fun observe(): Flow<PlayerProfile?>
+    @Query("SELECT * FROM player_profile WHERE id = 1") suspend fun get(): PlayerProfile?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(profile: PlayerProfile)
+    @Query("DELETE FROM player_profile") suspend fun deleteAll()
+}
+
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE games ADD COLUMN mode TEXT NOT NULL DEFAULT 'Two players'")
@@ -97,21 +135,39 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS player_profile (" +
+                "id INTEGER NOT NULL, updatedAt INTEGER NOT NULL, gamesReviewed INTEGER NOT NULL, " +
+                "accuracySum REAL NOT NULL, plyCount INTEGER NOT NULL, brilliant INTEGER NOT NULL, " +
+                "great INTEGER NOT NULL, best INTEGER NOT NULL, excellent INTEGER NOT NULL, " +
+                "good INTEGER NOT NULL, book INTEGER NOT NULL, inaccuracy INTEGER NOT NULL, " +
+                "mistake INTEGER NOT NULL, blunder INTEGER NOT NULL, miss INTEGER NOT NULL, " +
+                "openingLossSum REAL NOT NULL, openingPlies INTEGER NOT NULL, " +
+                "middleLossSum REAL NOT NULL, middlePlies INTEGER NOT NULL, " +
+                "endLossSum REAL NOT NULL, endPlies INTEGER NOT NULL, captures INTEGER NOT NULL, " +
+                "themes TEXT NOT NULL, PRIMARY KEY(id))"
+        )
+    }
+}
+
 @Database(
-    entities = [SavedGame::class, LessonProgress::class, PuzzleStats::class],
-    version = 3,
+    entities = [SavedGame::class, LessonProgress::class, PuzzleStats::class, PlayerProfile::class],
+    version = 4,
     exportSchema = false
 )
 abstract class ChessDatabase : RoomDatabase() {
     abstract fun games(): GameDao
     abstract fun lessons(): LessonDao
     abstract fun puzzles(): PuzzleDao
+    abstract fun profiles(): ProfileDao
 
     companion object {
         @Volatile private var INSTANCE: ChessDatabase? = null
         fun get(context: Context): ChessDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(context.applicationContext, ChessDatabase::class.java, "chess-coach.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build().also { INSTANCE = it }
         }
     }

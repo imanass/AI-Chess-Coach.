@@ -8,12 +8,16 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.aichesscoach.AI.CoachApi
 import com.example.aichesscoach.AI.CoachConfig
+import com.example.aichesscoach.chess.ChessUtils
 import com.example.aichesscoach.data.ChessDatabase
+import com.example.aichesscoach.data.PlayerProfile
 import com.example.aichesscoach.data.SavedGame
 import com.example.aichesscoach.engine.BuiltinEngine
 import com.example.aichesscoach.engine.Difficulty
 import com.example.aichesscoach.engine.StockfishEngine
+import com.example.aichesscoach.net.ChessComApi
 import com.example.aichesscoach.review.GameReview
+import com.example.aichesscoach.review.PlayStyle
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.Side
@@ -48,7 +52,9 @@ data class ReviewUiState(
     val completed: Int = 0,
     val total: Int = 0,
     val title: String = "",
-    val report: GameReview.Report? = null
+    val report: GameReview.Report? = null,
+    /** Which side the player owned in the reviewed game, when known. */
+    val playerSide: String? = null
 )
 
 data class ChessUiState(
@@ -80,6 +86,11 @@ data class ChessUiState(
     val savedGames: List<SavedGame> = emptyList(),
     val games: Int = 0,
     val moves: Int = 0,
+    /** Aggregated play-style profile built from engine-reviewed games. */
+    val profile: PlayerProfile? = null,
+    val chessComBusy: Boolean = false,
+    val chessComMessage: String = "",
+    val chessComGames: List<ChessComApi.ChessComGame> = emptyList(),
     val provider: String = "OpenAI",
     val endpoint: String = "https://api.openai.com/v1",
     val model: String = "gpt-4.1-mini",
@@ -94,7 +105,9 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
 
     private val database = ChessDatabase.get(app)
     private val dao = database.games()
+    private val profileDao = database.profiles()
     private val api = CoachApi()
+    private val chessCom = ChessComApi()
     private val appContext = app
     private val hasStockfish = StockfishEngine.isAvailable(app)
     private var chess = Board()
@@ -146,6 +159,11 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
                         moves = games.sumOf { g -> g.plyCount }
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            profileDao.observe().collect { profile ->
+                _ui.update { it.copy(profile = profile) }
             }
         }
         refreshEval()
@@ -688,12 +706,17 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------------------------------------------------------------
-    // Engine review
+    // Engine review + play-style profile
     // ---------------------------------------------------------------------
 
-    fun startReview(sans: List<String>, title: String) {
+    /**
+     * Reviews a game move by move. [playerSide] ("White"/"Black") is the side
+     * owned by the user, when known - the review then updates the stored
+     * play-style profile. Pass null for neutral reviews (e.g. two-player games).
+     */
+    fun startReview(sans: List<String>, title: String, playerSide: String? = null) {
         if (_ui.value.reviewState?.busy == true) return
-        _ui.update { it.copy(reviewState = ReviewUiState(busy = true, title = title)) }
+        _ui.update { it.copy(reviewState = ReviewUiState(busy = true, title = title, playerSide = playerSide)) }
         viewModelScope.launch(Dispatchers.Default) {
             val report = runCatching {
                 GameReview.analyze(
@@ -705,11 +728,129 @@ class ChessViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 )
             }.getOrNull()
+            if (report != null && playerSide != null) {
+                // Fold this game into the persistent play-style profile.
+                val stats = PlayStyle.extract(report, playerSide)
+                if (stats.plies > 0) {
+                    runCatching {
+                        profileDao.put(PlayStyle.mergeProfile(profileDao.get(), stats, System.currentTimeMillis()))
+                    }
+                }
+            }
             _ui.update { it.copy(reviewState = it.reviewState?.copy(busy = false, report = report)) }
         }
     }
 
     fun closeReview() {
         _ui.update { it.copy(reviewState = null) }
+    }
+
+    // ---------------------------------------------------------------------
+    // Play-style coach (free summary on-device, AI plan optional)
+    // ---------------------------------------------------------------------
+
+    fun coachStylePlan() {
+        val profile = _ui.value.profile
+        if (profile == null || profile.gamesReviewed == 0) {
+            _ui.update {
+                it.copy(coachChat = it.coachChat + ChatMessage(
+                    false,
+                    "Review a finished game first (Progress tab → Analyze, or the game-over dialog → " +
+                        "Engine review). Every reviewed game sharpens my picture of your play style."
+                ))
+            }
+            return
+        }
+        askCoach("Build me a training plan from my play style.") {
+            api.coachPlan(config(), PlayStyle.statsText(profile), recentGamesSummary())
+        }
+    }
+
+    private fun recentGamesSummary(): String {
+        val games = _ui.value.savedGames.take(5)
+        if (games.isEmpty()) return ""
+        return games.joinToString("\n") { game ->
+            val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT)
+                .format(java.util.Date(game.playedAt))
+            "- $date: ${game.mode}, result ${game.result}, ${game.plyCount} plies"
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // chess.com import (free public API)
+    // ---------------------------------------------------------------------
+
+    fun lastChessComUsername(): String = settingsPrefs.getString("chesscom_user", "") ?: ""
+
+    fun loadChessComGames(username: String) {
+        if (_ui.value.chessComBusy) return
+        _ui.update {
+            it.copy(
+                chessComBusy = true,
+                chessComMessage = "Fetching games from chess.com…",
+                chessComGames = emptyList()
+            )
+        }
+        viewModelScope.launch {
+            runCatching { chessCom.latestGames(username) }
+                .onSuccess { games ->
+                    settingsPrefs.edit().putString("chesscom_user", username.trim()).apply()
+                    _ui.update {
+                        it.copy(
+                            chessComBusy = false,
+                            chessComGames = games,
+                            chessComMessage = if (games.isEmpty())
+                                "No recent games found for this username."
+                            else "Found ${games.size} recent games. Import the ones you want to review."
+                        )
+                    }
+                }
+                .onFailure { cause ->
+                    _ui.update {
+                        it.copy(chessComBusy = false, chessComMessage = "⚠️ ${cause.message ?: "Could not reach chess.com."}")
+                    }
+                }
+        }
+    }
+
+    fun importChessComGame(game: ChessComApi.ChessComGame) {
+        val username = lastChessComUsername()
+        viewModelScope.launch(Dispatchers.Default) {
+            val sans = runCatching { ChessUtils.parseAnnotatedPgn(game.pgn) }.getOrDefault(emptyList())
+            if (sans.isEmpty()) {
+                _ui.update { it.copy(chessComMessage = "This game could not be parsed for import.") }
+                return@launch
+            }
+            val playerSide = when {
+                username.isNotBlank() && game.whiteName.equals(username, ignoreCase = true) -> SavedGame.SIDE_WHITE
+                username.isNotBlank() && game.blackName.equals(username, ignoreCase = true) -> SavedGame.SIDE_BLACK
+                else -> SavedGame.SIDE_WHITE
+            }
+            val normalized = ChessUtils.toPgn(sans)
+            val board = Board()
+            runCatching { sans.forEach { board.doMove(it) } }
+            val alreadyImported = _ui.value.savedGames.any { it.pgn == normalized }
+            runCatching {
+                dao.insert(
+                    SavedGame(
+                        playedAt = if (game.endTimeMs > 0) game.endTimeMs else System.currentTimeMillis(),
+                        pgn = normalized,
+                        result = game.result,
+                        plyCount = sans.size,
+                        fen = board.fen,
+                        mode = SavedGame.MODE_CHESS_COM,
+                        playerSide = playerSide
+                    )
+                )
+            }.onSuccess {
+                _ui.update {
+                    it.copy(chessComMessage = if (alreadyImported)
+                        "Game was already in your history."
+                    else "Imported: ${game.whiteName} vs ${game.blackName}. Find it in Saved games and tap Analyze.")
+                }
+            }.onFailure { cause ->
+                _ui.update { it.copy(chessComMessage = "⚠️ Import failed: ${cause.message}") }
+            }
+        }
     }
 }

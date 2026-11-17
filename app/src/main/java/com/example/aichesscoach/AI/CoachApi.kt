@@ -132,6 +132,30 @@ class CoachApi {
         return ask(config, SYSTEM_PROMPT, user, maxTokens = 1200)
     }
 
+    /**
+     * Personal training plan derived from the player's aggregated play-style
+     * profile (see PlayStyle.statsText). The profile data itself is computed
+     * on-device; the AI only turns it into advice.
+     */
+    suspend fun coachPlan(config: CoachConfig, profileText: String, recentGames: String): String {
+        val system = SYSTEM_PROMPT +
+            " You are now acting as the player's personal trainer: build a short, concrete practice plan " +
+            "aimed at the documented weaknesses, and refer to them by name."
+        val user = buildString {
+            append("Here is the player's aggregated play-style profile from engine-reviewed games:\n\n")
+            append(profileText)
+            if (recentGames.isNotBlank()) {
+                append("\nRecent games:\n$recentGames\n")
+            }
+            append("\nGive exactly these three sections:\n")
+            append("1. The two most damaging habits visible in this data\n")
+            append("2. A one-week practice plan with specific drills (include puzzles, opening work and slower games)\n")
+            append("3. How we will know the plan is working (measurable signs in future game reviews)\n")
+            append("Keep it under 320 words.")
+        }
+        return ask(config, system, user, maxTokens = 1200)
+    }
+
     companion object {
         private val JSON = "application/json; charset=utf-8".toMediaType()
 

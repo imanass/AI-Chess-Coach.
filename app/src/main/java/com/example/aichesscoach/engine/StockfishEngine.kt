@@ -27,13 +27,23 @@ data class EngineAnalysis(
     val scoreCpStm: Int,
     val mateInStm: Int?,
     val depth: Int,
-    val pvUci: List<String>
+    val pvUci: List<String>,
+    /** Second-best root move (present only when MultiPV 2 was requested). */
+    val secondBestUci: String? = null,
+    val secondScoreCpStm: Int? = null,
+    val secondMateInStm: Int? = null
 ) {
     /** Score mapped onto the app's mate-ceiling scale used by review and puzzles. */
-    fun scoreStm(mateCeiling: Int): Int = when {
-        (mateInStm ?: 0) > 0 -> mateCeiling - 1
-        (mateInStm ?: 0) < 0 -> -(mateCeiling - 1)
-        else -> scoreCpStm
+    fun scoreStm(mateCeiling: Int): Int = mapScore(scoreCpStm, mateInStm, mateCeiling)
+
+    /** Second-best score mapped the same way, or null when MultiPV was not used. */
+    fun secondScoreStm(mateCeiling: Int): Int? =
+        secondScoreCpStm?.let { mapScore(it, secondMateInStm, mateCeiling) }
+
+    private fun mapScore(cp: Int, mate: Int?, ceiling: Int): Int = when {
+        (mate ?: 0) > 0 -> ceiling - 1
+        (mate ?: 0) < 0 -> -(ceiling - 1)
+        else -> cp
     }
 }
 
@@ -119,6 +129,7 @@ object StockfishEngine {
     /**
      * Runs one search. [limitElo] enables UCI_LimitStrength (1320-3190) for the
      * computer opponent; [skillLevel] (0-20) adds blunder noise on top.
+     * [multiPv] (1-3) returns the second/third-best root move alongside the best.
      */
     suspend fun analyse(
         context: Context,
@@ -126,7 +137,8 @@ object StockfishEngine {
         depth: Int = 12,
         movetimeMs: Long? = null,
         limitElo: Int? = null,
-        skillLevel: Int? = null
+        skillLevel: Int? = null,
+        multiPv: Int = 1
     ): EngineAnalysis? = mutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
@@ -143,6 +155,8 @@ object StockfishEngine {
                 if (skillLevel != null) {
                     out.write("setoption name Skill Level value ${skillLevel.coerceIn(0, 20)}"); out.newLine()
                 }
+                // Always reset MultiPV so options do not leak between queries.
+                out.write("setoption name MultiPV value ${multiPv.coerceIn(1, 3)}"); out.newLine()
                 out.write("position fen $fen"); out.newLine()
                 out.write(if (movetimeMs != null) "go movetime $movetimeMs" else "go depth $depth")
                 out.newLine()
@@ -154,6 +168,9 @@ object StockfishEngine {
                 var mate: Int? = null
                 var reachedDepth = depth
                 var pv: List<String> = emptyList()
+                var secondBest: String? = null
+                var secondScoreCp: Int? = null
+                var secondMate: Int? = null
 
                 while (System.currentTimeMillis() < deadline) {
                     val line = queue.poll(250, TimeUnit.MILLISECONDS) ?: continue
@@ -162,21 +179,32 @@ object StockfishEngine {
                         line.startsWith("bestmove") -> { best = line.split(" ").getOrNull(1); break }
                         line.startsWith("info") && line.contains(" pv ") -> {
                             parseInfo(line)?.let { parsed ->
-                                reachedDepth = parsed.depth
-                                scoreCp = parsed.scoreCp
-                                mate = parsed.mateIn
-                                pv = parsed.pv
+                                if (parsed.multipv <= 1) {
+                                    reachedDepth = parsed.depth
+                                    scoreCp = parsed.scoreCp
+                                    mate = parsed.mateIn
+                                    pv = parsed.pv
+                                } else {
+                                    secondBest = parsed.pv.firstOrNull()
+                                    secondScoreCp = parsed.scoreCp
+                                    secondMate = parsed.mateIn
+                                }
                             }
                         }
                     }
                 }
                 if (best == null) { shutdown(); return@runCatching null }
-                EngineAnalysis(best, scoreCp, mate, reachedDepth, pv)
+                EngineAnalysis(
+                    best, scoreCp, mate, reachedDepth, pv,
+                    secondBest.takeIf { multiPv > 1 },
+                    secondScoreCp.takeIf { multiPv > 1 },
+                    secondMate.takeIf { multiPv > 1 }
+                )
             }.getOrNull()
         }
     }
 
-    private data class InfoLine(val depth: Int, val scoreCp: Int, val mateIn: Int?, val pv: List<String>)
+    private data class InfoLine(val depth: Int, val scoreCp: Int, val mateIn: Int?, val pv: List<String>, val multipv: Int)
 
     private fun parseInfo(line: String): InfoLine? {
         val tokens = line.split(" ")
@@ -184,10 +212,12 @@ object StockfishEngine {
         var cp = 0
         var mate: Int? = null
         var pv: List<String> = emptyList()
+        var multipv = 1
         var i = 1
         while (i < tokens.size) {
             when (tokens[i]) {
                 "depth" -> depth = tokens.getOrNull(i + 1)?.toIntOrNull() ?: 0
+                "multipv" -> multipv = tokens.getOrNull(i + 1)?.toIntOrNull() ?: 1
                 "score" -> when (tokens.getOrNull(i + 1)) {
                     "cp" -> { cp = tokens.getOrNull(i + 2)?.toIntOrNull() ?: 0; mate = null }
                     "mate" -> { mate = tokens.getOrNull(i + 2)?.toIntOrNull() }
@@ -196,7 +226,7 @@ object StockfishEngine {
             }
             i++
         }
-        return if (pv.isNotEmpty()) InfoLine(depth, cp, mate, pv) else null
+        return if (pv.isNotEmpty()) InfoLine(depth, cp, mate, pv, multipv) else null
     }
 
     /** Converts a UCI move (e2e4 / e7e8q) into a legal chesslib [Move] for [board]. */

@@ -1,66 +1,80 @@
 # AI Chess Coach — Android project
 
-A chess trainer that plays and teaches: a built-in engine opponent, a full rules
-implementation, local game history, and an optional AI coach (OpenAI-compatible,
-Google Gemini, or Anthropic Claude) that explains your moves and reviews your games.
+A chess trainer that plays and teaches: an on-device Stockfish 19 engine, a
+chess.com-style game review with move classification, a persistent play-style
+profile that targets your recurring mistakes, local game history, chess.com
+game import, and an optional AI coach (OpenAI-compatible, Google Gemini, or
+Anthropic Claude). All engine analysis runs on-device and is free; the AI coach
+is optional and only receives summary text.
 
-## Implemented in this revision
+## Implemented in this revision (v5)
 
 ### Play
-- Interactive legal chessboard: legal-move highlighting (dots for moves, rings for
-  captures), last-move highlight, check highlight on the king, and tap-to-move.
-- **Computer opponent** with three difficulty levels (Easy / Medium / Hard), powered by
-  a built-in engine written for this app: iterative-deepening negamax with alpha-beta
-  pruning, quiescence search, MVV-LVA move ordering, and material + piece-square
-  evaluation. Original code — **no Stockfish binary is bundled**, so there are no GPL
-  licensing obligations.
-- Play as White or Black, or switch to two-player (pass-and-play) mode.
-- Board flip, move undo (takes back the computer's reply too), and a live material
-  evaluation badge (toggleable in Settings).
-- Full promotion handling with a piece picker (queen / rook / bishop / knight).
-- Proper SAN move recording with disambiguation, castling (`O-O`, `O-O-O`), promotion
-  (`e8=Q`), and check (`+`) / checkmate (`#`) suffixes, displayed as a numbered move list.
+- Interactive legal chessboard: legal-move highlighting, last-move and check
+  highlights, tap-to-move, board flip, undo, promotion picker.
+- **Computer opponent**: on-device Stockfish 19 (UCI subprocess, `libstockfish.so`,
+  downloaded at build time by CI) for Medium/Hard, a built-in
+  iterative-deepening negamax engine for Easy and as fallback. GPL-3.0 applies
+  via Stockfish.
+- Play as White or Black, or pass-and-play two-player mode.
+
+### Game review (chess.com-style, free)
+- Every move is classified as **Brilliant / Great / Best / Excellent / Good /
+  Book / Inaccuracy / Mistake / Blunder / Miss** by comparing it against the
+  engine's best *and second-best* move (MultiPV 2) on a win-probability scale.
+- Per-side accuracy percentages, a tag-count summary, a per-move evaluation
+  graph coloured by move quality, and the best move shown for each mistake.
+- "Book" moves are detected against a compact offline openings book
+  (~90 named lines).
+- Brilliant requires an engine-best move that sacrifices material while staying
+  good; Great requires a clear gap to the second-best line; Miss marks thrown-away
+  wins and missed mates.
+
+### Play-style profile & targeted teaching
+- Every reviewed game is folded into a persistent Room-backed profile:
+  accuracy across reviewed games, tag counts, phase-by-phase (opening /
+  middlegame / endgame) win-point loss, capture tendencies.
+- Recurring mistake themes are detected on-device, e.g. *leaving pieces
+  undefended* (moves refuted by a simple capture), *missing winning tactics*,
+  *one-move blunders*, *risky captures*, *shaky openings*, *endgame accuracy*.
+- The Progress tab shows your style label, accuracy, top tags and the drills to
+  fix first — computed locally, always free.
+- Optional AI: "Ask the coach for a plan" sends only the aggregated summary text
+  to your configured provider and returns a one-week practice plan.
+
+### chess.com import (free)
+- Fetch your recent games via chess.com's public Published-Data API (no key) by
+  username, import them into local history, and review them with the same
+  on-device analysis.
 
 ### Coach
-- Chat-style coach screen with quick actions: *Explain last move* (with the position
-  before and after), *Ideas in this position*, and *Review this game* (structured
-  what-went-well / key-moments / next-lesson review of the full move list).
-- The coach prompt is explicit that it must never claim to have run Stockfish; the only
-  automated evaluation it receives is the built-in analyzer's material/PST score.
-- Providers: OpenAI (plus any OpenAI-compatible endpoint), Google Gemini, Anthropic
-  Claude. Robust error parsing for each provider's error shapes, token limits on every
-  request, and a cheap one-word connection test.
+- Chat-style coach screen: explain last move, ideas in this position, review
+  this game — providers: OpenAI (+ compatible endpoints), Google Gemini,
+  Anthropic Claude. Keys stored in EncryptedSharedPreferences; requests go
+  directly to the provider.
 
-### Progress
-- Real statistics from the local Room database: games played, moves recorded,
-  vs-computer record (W-L-D), win rate, and an adaptive "current focus" tip.
-- Saved-game browser: tap any finished game to read its move list, delete single games,
-  or clear all history.
-
-### Settings
-- Provider / endpoint / model / API key, with a key-visibility toggle. Keys are stored
-  in AndroidX EncryptedSharedPreferences on-device; requests go directly to the provider.
-- Engine evaluation toggle. No analytics and no third-party tracking anywhere.
+### Training
+- 29 interactive lessons (Learn tab) with unlockable chapters and drills.
+- Puzzle bank with rating, streaks and hints (Puzzles tab).
 
 ### Storage
-- Room database v2 stores `mode` and `playerSide` per game, with a proper
-  `Migration(1, 2)` so existing installs upgrade without losing data.
-- Non-secret preferences (mode, difficulty, side, flip, evaluation) persist across
-  restarts.
+- Room database v4: games, lesson progress, puzzle stats and the play-style
+  profile, with migrations 1→2, 2→3 and 3→4 so existing installs upgrade
+  without losing data.
 
 ### Build
 - Launcher icon (adaptive, vector pawn), dark-first Material 3 theme.
-- A GitHub Actions workflow builds a debug APK and uploads it as an artifact.
+- GitHub Actions workflow: unit tests + debug APK; it downloads Stockfish 19
+  (arm64) and validates the ELF header before packing it into the APK.
 
 ## Important limitations
-- This environment has no Android SDK, so the APK was **not built here**; use the
-  GitHub Actions workflow (Actions → Android APK → Run workflow) or Android Studio.
-- The built-in engine is deliberately modest (~1-second search). It plays legal,
-  sensible chess but is far below Stockfish strength, and its evaluation badge is a
-  heuristic, not an engine-grade assessment.
-- Games are saved automatically when they end.
-- API keys on a mobile device can be extracted from a compromised device; for a public
-  app, proxy requests through a backend you control.
+- The Stockfish binary is **not committed** to the repo; the CI workflow fetches
+  it at build time. Locally cloned builds fall back to the built-in engine.
+- Reviews run at fixed shallow depth (Stockfish depth 12 / built-in depth 4) so
+  a full game finishes in seconds; classifications are estimates, not ground
+  truth.
+- API keys on a mobile device can be extracted from a compromised device; for a
+  public release, proxy AI requests through a backend you control.
 
 ## Build using GitHub Actions
 1. Push this project to a GitHub repository.

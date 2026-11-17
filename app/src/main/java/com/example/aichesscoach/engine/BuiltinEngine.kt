@@ -262,16 +262,34 @@ object BuiltinEngine {
      * read-only - used by game review and puzzle verification.
      */
     fun analyzePosition(position: Board, budgetMs: Long = 300, maxDepth: Int = 4): Pair<Move?, Int> {
+        val (best, score, _) = analyzePositionWithSecond(position, budgetMs, maxDepth)
+        return best to score
+    }
+
+    /**
+     * Same search as [analyzePosition], but also reports the score of the
+     * second-best distinct root move (null when there is only one legal move).
+     * Game review uses the gap between the two to detect "only good move"
+     * positions for the Great classification.
+     */
+    fun analyzePositionWithSecond(
+        position: Board, budgetMs: Long = 300, maxDepth: Int = 4
+    ): Triple<Move?, Int, Int?> {
         val board = Board()
         board.loadFromFen(position.fen)
         val rootMoves = board.legalMoves()
-        if (rootMoves.isEmpty()) return null to (if (board.isKingAttacked()) -MATE else 0)
+        if (rootMoves.isEmpty()) {
+            return Triple(null, if (board.isKingAttacked()) -MATE else 0, null)
+        }
         val deadline = System.nanoTime() + budgetMs * 1_000_000
         var bestMove = rootMoves[0]
         var bestScore = -2 * MATE
+        var secondScore: Int? = null
         for (depth in 1..maxDepth) {
             var depthBest = -2 * MATE
+            var depthSecond: Int? = null
             var depthMove: Move = rootMoves[0]
+            var haveBest = false
             var aborted = false
             for (move in rootMoves) {
                 board.doMove(move)
@@ -279,12 +297,21 @@ object BuiltinEngine {
                 board.undoMove()
                 if (child == TIMEOUT) { aborted = true; break }
                 val score = -child
-                if (score > depthBest) { depthBest = score; depthMove = move }
+                if (!haveBest || score > depthBest) {
+                    if (haveBest) depthSecond = depthBest
+                    depthBest = score
+                    depthMove = move
+                    haveBest = true
+                } else if (depthSecond == null || score > depthSecond) {
+                    depthSecond = score
+                }
             }
-            if (!aborted) { bestScore = depthBest; bestMove = depthMove }
+            if (!aborted) {
+                bestScore = depthBest; bestMove = depthMove; secondScore = depthSecond
+            }
             if (aborted || bestScore >= MATE - 64 || bestScore <= -(MATE - 64)) break
         }
-        return bestMove to bestScore
+        return Triple(bestMove, bestScore, secondScore)
     }
 
     /** True when the side to move has a move that immediately checkmates the opponent. */

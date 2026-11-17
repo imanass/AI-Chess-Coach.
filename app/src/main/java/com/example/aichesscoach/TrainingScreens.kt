@@ -1,5 +1,6 @@
 package com.example.aichesscoach
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -16,11 +17,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.aichesscoach.review.GameReview
+import kotlin.math.abs
+import kotlin.math.exp
 
 // ---------------------------------------------------------------------------
 // Learn
@@ -287,11 +293,15 @@ fun PromotionDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
 
 private val qualityColors = mapOf(
     "Brilliant" to Color(0xFF26C2A3),
+    "Great" to Color(0xFF7FA7D9),
     "Best" to Color(0xFF95BB4A),
+    "Excellent" to Color(0xFF6FA85A),
     "Good" to Color(0xFF96AF8B),
+    "Book" to Color(0xFFA88865),
     "Inaccuracy" to Color(0xFFF7C255),
     "Mistake" to Color(0xFFE58F2A),
-    "Blunder" to Color(0xFFE54040)
+    "Blunder" to Color(0xFFE54040),
+    "Miss" to Color(0xFFB47CD8)
 )
 
 @Composable
@@ -325,18 +335,54 @@ fun ReviewOverlay(state: ReviewUiState, onClose: () -> Unit) {
                 return@Column
             }
 
+            val counts = remember(report) { report.counts() }
+
+            // Accuracy header, with the player's side highlighted when known.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                StatCard("White accuracy", "${report.whiteAccuracy}%", Modifier.weight(1f))
-                StatCard("Black accuracy", "${report.blackAccuracy}%", Modifier.weight(1f))
+                AccuracyCard(
+                    label = if (state.playerSide == "White") "White · you" else "White",
+                    value = report.whiteAccuracy,
+                    isPlayer = state.playerSide == "White",
+                    modifier = Modifier.weight(1f)
+                )
+                AccuracyCard(
+                    label = if (state.playerSide == "Black") "Black · you" else "Black",
+                    value = report.blackAccuracy,
+                    isPlayer = state.playerSide == "Black",
+                    modifier = Modifier.weight(1f)
+                )
             }
-            Text(
-                "Blunders: ${report.blunders.size}  ·  Mistakes: ${report.mistakes.size}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp)
-            )
+
+            // Tag counts, chess.com-style.
+            Row(
+                Modifier.fillMaxWidth().padding(top = 10.dp).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                GameReview.Quality.entries.forEach { quality ->
+                    val count = counts[quality] ?: 0
+                    if (count > 0) {
+                        val color = qualityColors[quality.label] ?: MaterialTheme.colorScheme.onSurface
+                        Surface(shape = CircleShape, color = color.copy(alpha = 0.15f)) {
+                            Text(
+                                "${quality.symbol} $count",
+                                Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = color
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(10.dp))
+            Text(
+                "Evaluation by move (bars follow the engine eval, colour = move quality)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            EvalGraph(report)
+
+            Spacer(Modifier.height(8.dp))
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 report.moves.forEach { move ->
                     val color = qualityColors[move.quality.label] ?: MaterialTheme.colorScheme.onSurface
@@ -347,7 +393,7 @@ fun ReviewOverlay(state: ReviewUiState, onClose: () -> Unit) {
                         Text(
                             "${(move.ply + 1) / 2}${if (move.ply % 2 == 1) "." else "…"} ${move.san}",
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.width(120.dp)
+                            modifier = Modifier.width(110.dp)
                         )
                         Surface(shape = CircleShape, color = color.copy(alpha = 0.18f)) {
                             Text(
@@ -357,8 +403,14 @@ fun ReviewOverlay(state: ReviewUiState, onClose: () -> Unit) {
                                 color = color
                             )
                         }
+                        if (move.quality == GameReview.Quality.BRILLIANT && move.isCapture) {
+                            Spacer(Modifier.width(6.dp))
+                            Text("sacrifice", style = MaterialTheme.typography.labelSmall, color = color)
+                        }
                         Spacer(Modifier.weight(1f))
-                        if (move.bestSan != null && move.quality != GameReview.Quality.BEST) {
+                        if (move.bestSan != null && move.quality != GameReview.Quality.BEST &&
+                            move.quality != GameReview.Quality.BOOK && move.lossWp >= 5
+                        ) {
                             Text(
                                 "Best: ${move.bestSan}",
                                 style = MaterialTheme.typography.labelSmall,
@@ -368,6 +420,54 @@ fun ReviewOverlay(state: ReviewUiState, onClose: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccuracyCard(label: String, value: Int, isPlayer: Boolean, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPlayer) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+            Text(
+                "$value%",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/** Per-move evaluation bars: height = engine eval, colour = move quality. */
+@Composable
+private fun EvalGraph(report: GameReview.Report) {
+    Canvas(Modifier.fillMaxWidth().height(90.dp).padding(vertical = 4.dp)) {
+        val moves = report.moves
+        if (moves.isEmpty()) return@Canvas
+        val barWidth = size.width / moves.size
+        val half = size.height / 2
+        // Background halves so the eval is readable without the midline only.
+        drawRect(Color(0xFF2A2A2E), size = Size(size.width, half))
+        drawRect(Color(0xFF4A4A50), topLeft = Offset(0f, half), size = Size(size.width, half))
+        drawLine(Color.White.copy(alpha = 0.6f), Offset(0f, half), Offset(size.width, half), 2f)
+        moves.forEachIndexed { index, move ->
+            val cp = move.evalWhiteCp.coerceIn(-600, 600)
+            val whiteShare = 1.0 / (1.0 + exp(-0.004 * cp))
+            val offset = ((whiteShare - 0.5) * 2.0 * half).toFloat()
+            val color = qualityColors[move.quality.label] ?: Color.Gray
+            val top = if (offset > 0) half - offset else half
+            val height = abs(offset).coerceAtLeast(2f)
+            drawRect(
+                color,
+                topLeft = Offset(index * barWidth, top),
+                size = Size((barWidth - 1.dp.toPx()).coerceAtLeast(1f), height)
+            )
         }
     }
 }

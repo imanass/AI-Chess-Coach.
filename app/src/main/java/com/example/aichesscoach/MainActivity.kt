@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aichesscoach.data.SavedGame
 import com.example.aichesscoach.engine.Difficulty
+import com.example.aichesscoach.review.PlayStyle
 import com.example.aichesscoach.ui.BoardDark
 import com.example.aichesscoach.ui.BoardLight
 import com.example.aichesscoach.ui.ChessCoachTheme
@@ -535,6 +536,10 @@ fun ProgressScreen(vm: ChessViewModel) {
             }
         }
 
+        PlayStyleCard(vm, state)
+
+        ChessComImportCard(vm, state)
+
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Saved games", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -612,7 +617,8 @@ fun ProgressScreen(vm: ChessViewModel) {
                     TextButton(onClick = {
                         vm.startReview(
                             com.example.aichesscoach.chess.ChessUtils.parsePgnMoves(game.pgn),
-                            "Saved game"
+                            "Saved game",
+                            if (game.mode == SavedGame.MODE_TWO_PLAYERS) null else game.playerSide
                         )
                         viewingGame = null
                     }) { Text("Analyze") }
@@ -635,9 +641,166 @@ fun ProgressScreen(vm: ChessViewModel) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Play style + chess.com import
+// ---------------------------------------------------------------------------
+
+private val tagColors = mapOf(
+    "Blunder" to Color(0xFFE54040),
+    "Mistake" to Color(0xFFE58F2A),
+    "Miss" to Color(0xFFB47CD8),
+    "Brilliant" to Color(0xFF26C2A3)
+)
+
 @Composable
-fun StatCard(label: String, value: String, modifier: Modifier = Modifier, caption: String? = null) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+fun PlayStyleCard(vm: ChessViewModel, state: ChessUiState) {
+    val profile = state.profile?.takeIf { it.gamesReviewed > 0 } ?: return
+    val advice = remember(profile.updatedAt) { PlayStyle.describe(profile) }
+
+    Spacer(Modifier.height(16.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Play style", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text(
+                        advice.styleLabel,
+                        Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+            Text(
+                advice.styleDetail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCard("Accuracy", "${advice.accuracy}%", Modifier.weight(1f), caption = "reviewed games")
+                StatCard("Games reviewed", profile.gamesReviewed.toString(), Modifier.weight(1f), caption = "player moves ${profile.plyCount}")
+            }
+            Spacer(Modifier.height(8.dp))
+            // Quick mistake tags
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(
+                    "Blunder" to profile.blunder,
+                    "Mistake" to profile.mistake,
+                    "Miss" to profile.miss,
+                    "Brilliant" to profile.brilliant
+                ).forEach { (tag, count) ->
+                    if (count > 0) {
+                        val color = tagColors[tag] ?: MaterialTheme.colorScheme.primary
+                        Surface(shape = CircleShape, color = color.copy(alpha = 0.15f)) {
+                            Text(
+                                "$tag $count",
+                                Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = color
+                            )
+                        }
+                    }
+                }
+            }
+            if (advice.focus.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("What to fix first", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                advice.focus.forEach { area ->
+                    Text(
+                        "• ${area.title} — ${area.drill}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = { vm.coachStylePlan() },
+                enabled = !state.coachBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.School, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Ask the coach for a plan")
+            }
+            Text(
+                "The plan appears in the Coach tab. Every reviewed game makes it sharper - the analysis itself runs free on this device.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ChessComImportCard(vm: ChessViewModel, state: ChessUiState) {
+    var username by remember { mutableStateOf(vm.lastChessComUsername()) }
+    val dateFormat = remember { DateFormat.getDateInstance(DateFormat.MEDIUM) }
+
+    Spacer(Modifier.height(16.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Text("Import from chess.com", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Pull your recent chess.com games (free public API, no key needed) and review them here with the on-device engine.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    username, { username = it },
+                    label = { Text("chess.com username") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = { vm.loadChessComGames(username) },
+                    enabled = !state.chessComBusy && username.isNotBlank()
+                ) {
+                    Text(if (state.chessComBusy) "…" else "Fetch")
+                }
+            }
+            if (state.chessComBusy) {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+            }
+            if (state.chessComMessage.isNotBlank()) {
+                Text(
+                    state.chessComMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            state.chessComGames.forEach { game ->
+                OutlinedCard(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "${game.whiteName} vs ${game.blackName}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "${dateFormat.format(Date(game.endTimeMs))} · ${game.timeClass} · ${game.result}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = { vm.importChessComGame(game) }) { Text("Import") }
+                    }
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+fun StatCard(label: String, value: String, modifier: Modifier = Modifier, caption: String? = null) {    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -782,7 +945,11 @@ fun GlobalDialogs(vm: ChessViewModel, onGoToCoach: () -> Unit) {
                 Row {
                     TextButton(onClick = { vm.coachReviewGame(); vm.dismissGameOver(); onGoToCoach() }) { Text("Coach review") }
                     TextButton(onClick = {
-                        vm.startReview(state.sanHistory, "Your game")
+                        vm.startReview(
+                            state.sanHistory,
+                            "Your game",
+                            if (state.mode == GameMode.VS_COMPUTER) state.playerSide.dbValue else null
+                        )
                         vm.dismissGameOver()
                     }) { Text("Engine review") }
                     TextButton(onClick = { vm.dismissGameOver() }) { Text("Close") }
