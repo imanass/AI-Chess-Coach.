@@ -99,7 +99,7 @@ object Openings {
         "Van Geet Opening" to "Nc3"
     )
 
-    private val distinct = lines.distinctBy { it.second }
+    private val distinct: List<String> = lines.distinctBy { it.second }.map { it.second }
 
     /** True when the SAN sequence played so far is an exact prefix of a known opening line. */
     fun isBookMove(sans: List<String>): Boolean {
@@ -111,7 +111,7 @@ object Openings {
     /** The name of the longest known opening that matches the whole sequence, if any. */
     fun nameFor(sans: List<String>): String? {
         val text = sans.joinToString(" ")
-        return distinct.filter { it.second == text }
+        return lines.filter { it.second == text }
             .maxByOrNull { it.second.length }
             ?.first
     }
